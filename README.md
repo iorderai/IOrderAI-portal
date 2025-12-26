@@ -1,73 +1,144 @@
-# React + TypeScript + Vite
+# iOrderAI 商家端 Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+iOrderAI Voice Agent 点餐系统的商家管理后台。
 
-Currently, two official plugins are available:
+## 技术栈
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **框架**: React 18 + TypeScript + Vite
+- **样式**: TailwindCSS 4
+- **路由**: React Router v6
+- **国际化**: i18next (中文/英文)
+- **图表**: Recharts
+- **地图**: Google Maps (@react-google-maps/api)
 
-## React Compiler
+## 功能模块
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| 模块 | 说明 |
+|------|------|
+| 登录 | 商户账号登录 |
+| 仪表盘 | 今日订单、收入概览 |
+| 订单管理 | 订单列表、搜索筛选、导出、状态操作 |
+| 财务中心 | 财务统计、趋势图表、打款记录 |
+| 餐馆信息 | 基本信息、配送模式、配送范围设置 |
 
-## Expanding the ESLint configuration
+## 快速开始
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 安装依赖
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 开发模式
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+### 构建
+
+```bash
+npm run build
+```
+
+### 预览构建结果
+
+```bash
+npm run preview
+```
+
+## 部署
+
+### Firebase Hosting
+
+1. 安装 Firebase CLI:
+```bash
+npm install -g firebase-tools
+```
+
+2. 登录 Firebase:
+```bash
+firebase login
+```
+
+3. 配置项目 ID (编辑 `.firebaserc`):
+```json
+{
+  "projects": {
+    "default": "your-firebase-project-id"
+  }
+}
+```
+
+4. 部署:
+```bash
+npm run deploy
+```
+
+## 环境变量
+
+在项目根目录创建 `.env` 文件:
+
+```env
+# Google Maps API Key (配送范围地图功能)
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# API Base URL (后端接口地址，当前使用 Mock 数据)
+VITE_API_BASE_URL=https://api.iorderai.com/v1
+```
+
+## 项目结构
+
+```
+src/
+├── components/          # 通用组件
+│   └── Layout/          # 布局组件 (侧边栏、头部)
+├── contexts/            # React Context
+│   └── AuthContext.tsx  # 认证状态管理
+├── hooks/               # 自定义 Hooks
+├── i18n/                # 多语言配置
+│   └── locales/         # 翻译文件 (zh.json, en.json)
+├── mock/                # Mock 模拟数据
+│   └── data.ts          # 订单、餐馆、财务模拟数据
+├── pages/               # 页面组件
+│   ├── Dashboard/       # 仪表盘
+│   ├── Finance/         # 财务模块
+│   ├── Login/           # 登录页
+│   ├── Orders/          # 订单管理
+│   └── Restaurant/      # 餐馆信息
+├── types/               # TypeScript 类型定义
+├── App.tsx              # 应用入口、路由配置
+└── main.tsx             # React 入口
+```
+
+## API 文档
+
+后端接口文档位于 [docs/API.md](docs/API.md)，包含：
+
+- 所有接口的请求/响应格式
+- 当前 Mock 数据位置说明
+- 前端替换指南
+
+## 测试账号
+
+当前使用 Mock 数据，测试登录:
+
+- **用户名**: admin
+- **密码**: admin123
+
+## 开发说明
+
+### 数据来源
+
+当前所有数据来自 `src/mock/data.ts`，后端开发完成后需替换为真实 API 调用。详见 [API 文档](docs/API.md)。
+
+### 多语言
+
+- 中文: `src/i18n/locales/zh.json`
+- 英文: `src/i18n/locales/en.json`
+
+切换语言使用顶部导航栏的语言切换按钮。
+
+### 配送范围地图
+
+需要配置 `VITE_GOOGLE_MAPS_API_KEY` 环境变量才能显示 Google Maps。未配置时会显示提示信息，但滑块控件仍可使用。
