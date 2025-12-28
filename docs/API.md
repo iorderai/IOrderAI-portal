@@ -17,6 +17,7 @@
 2. [餐馆信息接口](#2-餐馆信息接口)
 3. [订单管理接口](#3-订单管理接口)
 4. [财务接口](#4-财务接口)
+5. [提现接口](#5-提现接口)
 
 ---
 
@@ -527,6 +528,359 @@ Authorization: Bearer {token}
 
 ---
 
+## 5. 提现接口
+
+### 5.1 获取提现余额
+
+**前端位置**: `src/pages/Finance/index.tsx` - 提现管理 Tab
+
+**当前 Mock 数据位置**: `src/mock/data.ts` - `mockWithdrawalBalance`
+
+```
+GET /withdrawal/balance
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "availableAmount": 2600.71,
+    "frozenAmount": 458.90,
+    "processingAmount": 500.00,
+    "totalWithdrawn": 15678.45,
+    "minimumWithdrawal": 50.00,
+    "withdrawalFeeRate": 0
+  }
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `availableAmount` | number | 可提现金额 |
+| `frozenAmount` | number | 冻结金额（未完成订单） |
+| `processingAmount` | number | 处理中金额（已发起提现未到账） |
+| `totalWithdrawn` | number | 历史累计提现总额 |
+| `minimumWithdrawal` | number | 最低提现金额 |
+| `withdrawalFeeRate` | number | 提现手续费率（0 = 免手续费） |
+
+---
+
+### 5.2 获取银行账户列表
+
+**前端位置**: `src/pages/Finance/BankAccountModal.tsx`
+
+**当前 Mock 数据位置**: `src/mock/data.ts` - `mockBankAccounts`
+
+```
+GET /withdrawal/bank-accounts
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "bank_001",
+      "bankName": "Chase Bank",
+      "accountType": "checking",
+      "accountNumber": "****4567",
+      "routingNumber": "****1234",
+      "isDefault": true,
+      "createdAt": "2024-06-15T00:00:00Z"
+    }
+  ]
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `accountType` | enum | `checking` \| `savings` |
+| `accountNumber` | string | 账户号码后4位（脱敏） |
+| `routingNumber` | string | 路由号码后4位（脱敏） |
+| `isDefault` | boolean | 是否为默认提现账户 |
+
+---
+
+### 5.3 添加银行账户
+
+**前端位置**: `src/pages/Finance/BankAccountModal.tsx` - 添加表单
+
+**当前 Mock 实现**: 本地 state 操作
+
+```
+POST /withdrawal/bank-accounts
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**请求体**:
+```json
+{
+  "bankName": "Chase Bank",
+  "accountType": "checking",
+  "accountNumber": "123456789012",
+  "routingNumber": "021000021",
+  "isDefault": true
+}
+```
+
+**响应 (201)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "bank_003",
+    "bankName": "Chase Bank",
+    "accountType": "checking",
+    "accountNumber": "****9012",
+    "routingNumber": "****0021",
+    "isDefault": true,
+    "createdAt": "2024-12-26T10:00:00Z"
+  }
+}
+```
+
+**验证规则**:
+
+| 字段 | 规则 |
+|------|------|
+| `bankName` | 必填，1-100 字符 |
+| `accountType` | 必填，`checking` 或 `savings` |
+| `accountNumber` | 必填，4-17 位数字 |
+| `routingNumber` | 必填，9 位数字 |
+
+---
+
+### 5.4 删除银行账户
+
+**前端位置**: `src/pages/Finance/BankAccountModal.tsx` - 删除按钮
+
+**当前 Mock 实现**: 本地 state 操作
+
+```
+DELETE /withdrawal/bank-accounts/{accountId}
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "message": "Bank account deleted successfully"
+}
+```
+
+**注意**: 不能删除唯一的银行账户（至少保留一个）
+
+---
+
+### 5.5 设置默认银行账户
+
+**前端位置**: `src/pages/Finance/BankAccountModal.tsx` - 设为默认按钮
+
+**当前 Mock 实现**: 本地 state 操作
+
+```
+PATCH /withdrawal/bank-accounts/{accountId}/default
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "bank_002",
+    "isDefault": true
+  }
+}
+```
+
+---
+
+### 5.6 发起提现申请
+
+**前端位置**: `src/pages/Finance/WithdrawalModal.tsx` - 提交提现
+
+**当前 Mock 实现**: 本地 state 操作
+
+```
+POST /withdrawal/requests
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**请求体**:
+```json
+{
+  "amount": 500.00,
+  "bankAccountId": "bank_001"
+}
+```
+
+**响应 (201)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "WD-20241226-001",
+    "amount": 500.00,
+    "fee": 0,
+    "actualAmount": 500.00,
+    "bankAccountId": "bank_001",
+    "bankAccountInfo": "Chase ****4567",
+    "status": "pending",
+    "createdAt": "2024-12-26T10:00:00Z",
+    "estimatedArrival": "2024-12-30T00:00:00Z"
+  }
+}
+```
+
+**验证规则**:
+
+| 规则 | 说明 |
+|------|------|
+| 最低金额 | amount >= minimumWithdrawal |
+| 最高金额 | amount <= availableAmount |
+| 银行账户 | bankAccountId 必须存在 |
+
+**错误响应示例**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_BALANCE",
+    "message": "可提现余额不足"
+  }
+}
+```
+
+---
+
+### 5.7 获取提现记录
+
+**前端位置**: `src/pages/Finance/index.tsx` - 提现记录表格
+
+**当前 Mock 数据位置**: `src/mock/data.ts` - `mockWithdrawalRecords`
+
+```
+GET /withdrawal/requests
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `page` | number | 否 | 页码，默认 1 |
+| `pageSize` | number | 否 | 每页数量，默认 10 |
+| `status` | string | 否 | 筛选状态 |
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "requests": [
+      {
+        "id": "WD-20241226-001",
+        "amount": 500.00,
+        "fee": 0,
+        "actualAmount": 500.00,
+        "bankAccountId": "bank_001",
+        "bankAccountInfo": "Chase ****4567",
+        "status": "processing",
+        "failReason": null,
+        "createdAt": "2024-12-26T09:00:00Z",
+        "processedAt": "2024-12-26T10:30:00Z",
+        "completedAt": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 10,
+      "total": 15,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+**状态说明**:
+
+| 状态 | 说明 |
+|------|------|
+| `pending` | 待处理，刚提交的申请 |
+| `processing` | 处理中，正在进行 ACH 转账 |
+| `completed` | 已完成，资金已到账 |
+| `failed` | 失败，转账失败（查看 failReason） |
+| `cancelled` | 已取消，用户或系统取消 |
+
+---
+
+### 5.8 取消提现申请
+
+**前端位置**: 暂未实现 UI
+
+```
+POST /withdrawal/requests/{requestId}/cancel
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "WD-20241226-001",
+    "status": "cancelled",
+    "cancelledAt": "2024-12-26T11:00:00Z"
+  }
+}
+```
+
+**注意**: 只能取消 `pending` 状态的提现申请
+
+---
+
 ## 错误响应格式
 
 所有接口在发生错误时返回统一格式：
@@ -567,7 +921,8 @@ src/services/
 ├── auth.ts          # 认证相关 API
 ├── restaurant.ts    # 餐馆信息 API
 ├── orders.ts        # 订单管理 API
-└── finance.ts       # 财务相关 API
+├── finance.ts       # 财务相关 API
+└── withdrawal.ts    # 提现相关 API
 ```
 
 ### 2. 需要替换的文件
@@ -582,6 +937,11 @@ src/services/
 | `src/pages/Finance/index.tsx` | `getFinanceStats()` | `GET /finance/stats` |
 | `src/pages/Finance/index.tsx` | `mockDailyStats` | `GET /finance/trends` |
 | `src/pages/Finance/index.tsx` | `mockPaymentRecords` | `GET /finance/payments` |
+| `src/pages/Finance/index.tsx` | `mockWithdrawalBalance` | `GET /withdrawal/balance` |
+| `src/pages/Finance/index.tsx` | `mockWithdrawalRecords` | `GET /withdrawal/requests` |
+| `src/pages/Finance/index.tsx` | `mockBankAccounts` | `GET /withdrawal/bank-accounts` |
+| `src/pages/Finance/WithdrawalModal.tsx` | 本地 state 操作 | `POST /withdrawal/requests` |
+| `src/pages/Finance/BankAccountModal.tsx` | 本地 state 操作 | `POST/DELETE/PATCH /withdrawal/bank-accounts` |
 
 ### 3. 环境变量配置
 

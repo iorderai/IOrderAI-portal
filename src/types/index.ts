@@ -65,6 +65,45 @@ export interface PaymentRecord {
   bankAccount: string;
 }
 
+// 银行账户
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountType: 'checking' | 'savings';
+  accountNumber: string;  // 仅显示后4位
+  routingNumber: string;  // 仅显示后4位
+  isDefault: boolean;
+  createdAt: string;
+}
+
+// 提现申请状态
+export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+// 提现申请
+export interface WithdrawalRequest {
+  id: string;
+  amount: number;
+  fee: number;           // 提现手续费
+  actualAmount: number;  // 实际到账金额
+  bankAccountId: string;
+  bankAccountInfo: string;  // 银行账户简要信息，如 "Chase ****1234"
+  status: WithdrawalStatus;
+  failReason?: string;   // 失败原因
+  createdAt: string;
+  processedAt?: string;  // 处理时间
+  completedAt?: string;  // 完成时间
+}
+
+// 提现余额信息
+export interface WithdrawalBalance {
+  availableAmount: number;   // 可提现金额
+  frozenAmount: number;      // 冻结金额（未完成订单）
+  processingAmount: number;  // 提现处理中金额
+  totalWithdrawn: number;    // 历史累计提现
+  minimumWithdrawal: number; // 最低提现金额
+  withdrawalFeeRate: number; // 提现手续费率 (0 表示免手续费)
+}
+
 export interface User {
   id: string;
   username: string;

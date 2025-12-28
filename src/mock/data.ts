@@ -1,4 +1,4 @@
-import type { Restaurant, Order, PaymentRecord, FinanceStats } from '../types';
+import type { Restaurant, Order, PaymentRecord, FinanceStats, BankAccount, WithdrawalRequest, WithdrawalBalance } from '../types';
 
 export const mockRestaurant: Restaurant = {
   id: 'rest_001',
@@ -210,4 +210,99 @@ export const mockDailyStats = [
   { date: '12/24', orders: 73, amount: 2789.12 },
   { date: '12/25', orders: 28, amount: 1045.67 },
   { date: '12/26', orders: 12, amount: 458.90 },
+];
+
+// 银行账户 Mock 数据
+export const mockBankAccounts: BankAccount[] = [
+  {
+    id: 'bank_001',
+    bankName: 'Chase Bank',
+    accountType: 'checking',
+    accountNumber: '****4567',
+    routingNumber: '****1234',
+    isDefault: true,
+    createdAt: '2024-06-15T00:00:00Z',
+  },
+  {
+    id: 'bank_002',
+    bankName: 'Bank of America',
+    accountType: 'savings',
+    accountNumber: '****8901',
+    routingNumber: '****5678',
+    isDefault: false,
+    createdAt: '2024-08-20T00:00:00Z',
+  },
+];
+
+// 提现余额 Mock 数据
+export const mockWithdrawalBalance: WithdrawalBalance = {
+  availableAmount: 2600.71,    // 与 pendingAmount 对应
+  frozenAmount: 458.90,        // 今日订单金额暂时冻结
+  processingAmount: 500.00,    // 有一笔提现处理中
+  totalWithdrawn: 15678.45,    // 历史累计提现
+  minimumWithdrawal: 50.00,    // 最低提现 $50
+  withdrawalFeeRate: 0,        // 免手续费
+};
+
+// 提现记录 Mock 数据
+export const mockWithdrawalRecords: WithdrawalRequest[] = [
+  {
+    id: 'WD-20241226-001',
+    amount: 500.00,
+    fee: 0,
+    actualAmount: 500.00,
+    bankAccountId: 'bank_001',
+    bankAccountInfo: 'Chase ****4567',
+    status: 'processing',
+    createdAt: '2024-12-26T09:00:00Z',
+    processedAt: '2024-12-26T10:30:00Z',
+  },
+  {
+    id: 'WD-20241220-001',
+    amount: 2000.00,
+    fee: 0,
+    actualAmount: 2000.00,
+    bankAccountId: 'bank_001',
+    bankAccountInfo: 'Chase ****4567',
+    status: 'completed',
+    createdAt: '2024-12-20T14:00:00Z',
+    processedAt: '2024-12-20T15:00:00Z',
+    completedAt: '2024-12-21T10:00:00Z',
+  },
+  {
+    id: 'WD-20241215-001',
+    amount: 1500.00,
+    fee: 0,
+    actualAmount: 1500.00,
+    bankAccountId: 'bank_001',
+    bankAccountInfo: 'Chase ****4567',
+    status: 'completed',
+    createdAt: '2024-12-15T11:00:00Z',
+    processedAt: '2024-12-15T12:00:00Z',
+    completedAt: '2024-12-16T09:00:00Z',
+  },
+  {
+    id: 'WD-20241210-001',
+    amount: 800.00,
+    fee: 0,
+    actualAmount: 800.00,
+    bankAccountId: 'bank_002',
+    bankAccountInfo: 'Bank of America ****8901',
+    status: 'failed',
+    failReason: 'Bank account verification failed',
+    createdAt: '2024-12-10T16:00:00Z',
+    processedAt: '2024-12-10T17:00:00Z',
+  },
+  {
+    id: 'WD-20241205-001',
+    amount: 1200.00,
+    fee: 0,
+    actualAmount: 1200.00,
+    bankAccountId: 'bank_001',
+    bankAccountInfo: 'Chase ****4567',
+    status: 'completed',
+    createdAt: '2024-12-05T10:00:00Z',
+    processedAt: '2024-12-05T11:00:00Z',
+    completedAt: '2024-12-06T08:00:00Z',
+  },
 ];
