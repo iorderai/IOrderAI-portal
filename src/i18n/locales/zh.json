@@ -96,8 +96,7 @@
     "custom": "自定义",
     "orderCount": "订单数量",
     "totalAmount": "订单总金额",
-    "deliveryFeeExpense": "配送费支出",
-    "platformFee": "平台服务费",
+    "avgOrderValue": "平均客单价",
     "settlementAmount": "应结算金额",
     "settledAmount": "已结算金额",
     "pendingAmount": "待结算金额",
@@ -202,7 +201,12 @@
     "withinRadius": "范围内",
     "beyondRadius": "至",
     "mapApiKeyMissing": "请配置 Google Maps API Key",
-    "mapApiKeyHint": "在 .env 文件中设置 VITE_GOOGLE_MAPS_API_KEY"
+    "mapApiKeyHint": "在 .env 文件中设置 VITE_GOOGLE_MAPS_API_KEY",
+    "readOnlyNotice": "配送模式和范围在签约时确定，无法自行修改",
+    "contactToModify": "如需调整，请联系您的客户经理或发送邮件至 support@iorderai.com",
+    "deliveryModeNotice": "配送模式在签约时确定。如需更改，请联系客户经理。",
+    "contactToSwitch": "联系客户经理切换模式",
+    "readOnly": "只读"
   },
   "callRecords": {
     "title": "通话记录",

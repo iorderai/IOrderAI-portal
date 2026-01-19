@@ -96,8 +96,7 @@
     "custom": "Custom",
     "orderCount": "Order Count",
     "totalAmount": "Total Amount",
-    "deliveryFeeExpense": "Delivery Fee Expense",
-    "platformFee": "Platform Fee",
+    "avgOrderValue": "Avg Order Value",
     "settlementAmount": "Settlement Amount",
     "settledAmount": "Settled Amount",
     "pendingAmount": "Pending Amount",
@@ -202,7 +201,12 @@
     "withinRadius": "within",
     "beyondRadius": "to",
     "mapApiKeyMissing": "Please configure Google Maps API Key",
-    "mapApiKeyHint": "Set VITE_GOOGLE_MAPS_API_KEY in .env file"
+    "mapApiKeyHint": "Set VITE_GOOGLE_MAPS_API_KEY in .env file",
+    "readOnlyNotice": "Delivery mode and range are set during contract signing and cannot be modified",
+    "contactToModify": "To make changes, please contact your account manager or email support@iorderai.com",
+    "deliveryModeNotice": "Delivery mode is set during contract signing. Contact your account manager to change.",
+    "contactToSwitch": "Contact account manager to switch",
+    "readOnly": "Read Only"
   },
   "callRecords": {
     "title": "Call Records",
