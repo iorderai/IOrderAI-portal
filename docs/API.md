@@ -55,7 +55,7 @@ POST /auth/login
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": "user_001",
-      "username": "admin",
+      "username": "demo",
       "restaurantId": "rest_001"
     }
   }
@@ -234,7 +234,7 @@ POST /auth/reset-password
 - 验证 OTP 有效性（同 1.3）
 - 使用 bcrypt/Argon2 哈希新密码后存储
 - 新密码长度 >= 8 位（前端已做校验，后端需二次验证）
-- 密码强度规则参考 `src/utils/password.ts`：小写、大写、数字、特殊字符、长度 >= 12
+- 密码强度规则参考 `src/utils/password.ts`（评分制：含小写+1、含大写+1、含数字+1、含特殊字符+1、长度≥12 +1；得分≥4 为 strong）
 - 重置成功后使该用户所有旧 session/token 失效
 - 前端 UI 是 4 步向导：输入手机号 → 输入验证码 → 设置新密码 → 成功
 
@@ -353,7 +353,7 @@ Authorization: Bearer {token}
 
 **前端位置**: `src/pages/Restaurant/DeliveryRangeMap.tsx` - `handleSave()`
 
-**当前 Mock 实现**: 仅 console.log，无实际保存
+**当前 Mock 实现**: `handleSave()` 调用 `onSave()` prop，仅更新本地 state，无实际 API 调用。注意：该组件目前未在 `Restaurant/index.tsx` 中渲染
 
 ```
 PATCH /restaurant/delivery-settings
@@ -437,8 +437,7 @@ GET /orders?page=1&pageSize=10&status=pending&startDate=2024-12-01&endDate=2024-
             "id": "1",
             "name": "Kung Pao Chicken",
             "quantity": 2,
-            "price": 15.99,
-            "notes": "Extra spicy"
+            "price": 15.99
           }
         ],
         "subtotal": 58.95,
@@ -451,6 +450,7 @@ GET /orders?page=1&pageSize=10&status=pending&startDate=2024-12-01&endDate=2024-
         "deliveryAddress": "567 Oak Avenue, Apt 2B, San Francisco, CA 94103",
         "status": "pending",
         "cancelReason": null,
+        "notes": "请多给两套餐具，门铃坏了请敲门",
         "createdAt": "2024-12-26T10:30:00Z"
       }
     ],
@@ -474,6 +474,7 @@ GET /orders?page=1&pageSize=10&status=pending&startDate=2024-12-01&endDate=2024-
 | `status` | enum | `pending` \| `completed` \| `cancelled` |
 | `deliveryAddress` | string | 仅 delivery 类型订单有此字段 |
 | `cancelReason` | string | 仅 cancelled 状态订单有此字段 |
+| `notes` | string? | 订单备注（如：多要餐具、少放辣等） |
 
 ---
 
@@ -503,6 +504,7 @@ GET /orders/{orderId}
     "paymentStatus": "paid",
     "deliveryAddress": "567 Oak Avenue, Apt 2B, San Francisco, CA 94103",
     "status": "pending",
+    "notes": "请多给两套餐具，门铃坏了请敲门",
     "createdAt": "2024-12-26T10:30:00Z"
   }
 }
@@ -578,7 +580,7 @@ Authorization: Bearer {token}
 
 ### 3.5 导出订单
 
-**前端位置**: `src/pages/Orders/index.tsx` - `handleExport()`
+**前端位置**: `src/pages/Orders/index.tsx` - `exportToCSV()`
 
 **当前 Mock 实现**: 前端生成 CSV/Excel 文件
 
@@ -744,7 +746,7 @@ Authorization: Bearer {token}
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `status` | enum | `completed` \| `processing` \| `failed` |
+| `status` | enum | `completed` \| `pending` \| `failed` |
 | `method` | enum | `ach` (目前仅支持 ACH 转账) |
 | `bankAccount` | string | 银行账户后4位 (脱敏显示) |
 
@@ -1234,7 +1236,7 @@ Authorization: Bearer {token}
 | `content` | string | 对话内容文本 |
 | `timestamp` | string | 消息时间 (ISO 8601) |
 
-**注意**: `CallDetailModal.tsx` 中还会通过 `call.orderId` 查找关联订单并展示订单详情（左右分栏布局），后端无需额外接口，前端会复用 `GET /orders/{id}` 获取。
+**注意**: `CallDetailModal.tsx` 中还会通过 `call.orderId` 查找关联订单并展示订单详情（左右分栏布局），后端无需额外接口，前端会复用 `GET /orders/{orderId}` 获取。
 
 ---
 
@@ -1332,9 +1334,10 @@ src/services/
 | `src/contexts/AuthContext.tsx` | 硬编码 `resetPassword()` | `POST /auth/reset-password` |
 | `src/contexts/AuthContext.tsx` | 硬编码 `changePassword()` | `POST /auth/change-password` |
 | `src/pages/Restaurant/index.tsx` | `mockRestaurant` | `GET /restaurant` |
-| `src/pages/Restaurant/DeliveryRangeMap.tsx` | console.log | `PATCH /restaurant/delivery-settings` |
+| `src/pages/Restaurant/DeliveryRangeMap.tsx` | 本地 state（`onSave()` prop，未渲染） | `PATCH /restaurant/delivery-settings` |
 | `src/pages/Orders/index.tsx` | `mockOrders` | `GET /orders` |
-| `src/pages/Orders/index.tsx` | 本地 state 修改 | `POST /orders/{id}/complete`, `POST /orders/{id}/cancel` |
+| `src/pages/Orders/OrderDetailModal.tsx` | 来自父组件 prop | `GET /orders/{orderId}` |
+| `src/pages/Orders/index.tsx` | 本地 state 修改 | `POST /orders/{orderId}/complete`, `POST /orders/{orderId}/cancel` |
 | `src/pages/Finance/index.tsx` | `getFinanceStats()` | `GET /finance/stats` |
 | `src/pages/Finance/index.tsx` | `mockDailyStats` | `GET /finance/trends` |
 | `src/pages/Finance/index.tsx` | `mockPaymentRecords` | `GET /finance/payments` |

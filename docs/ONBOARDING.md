@@ -82,7 +82,7 @@ npm run dev
 
 ## 3. 接口总览
 
-共 **6 个模块、25 个接口**。完整请求/响应格式见 [`docs/API.md`](./API.md)。
+共 **6 个模块、26 个接口**。完整请求/响应格式见 [`docs/API.md`](./API.md)。
 
 ### 3.1 认证模块（5 个接口）
 
@@ -99,7 +99,7 @@ npm run dev
 | 方法 | 路径 | 功能 | 前端文件 | Mock 位置 |
 |------|------|------|---------|----------|
 | `GET` | `/restaurant` | 获取餐馆信息 | `Restaurant/index.tsx` | `mockRestaurant` |
-| `PATCH` | `/restaurant/delivery-settings` | 更新配送范围 | `Restaurant/DeliveryRangeMap.tsx` | `console.log` |
+| `PATCH` | `/restaurant/delivery-settings` | 更新配送范围 | `Restaurant/DeliveryRangeMap.tsx` | 本地 state（未渲染） |
 
 ### 3.3 订单模块（5 个接口）
 
@@ -119,18 +119,18 @@ npm run dev
 | `GET` | `/finance/trends` | 趋势数据 | `Finance/index.tsx` | `mockDailyStats` |
 | `GET` | `/finance/payments` | 打款记录 | `Finance/index.tsx` | `mockPaymentRecords` |
 
-### 3.5 提现模块（6 个接口）
+### 3.5 提现模块（8 个接口）
 
 | 方法 | 路径 | 功能 | 前端文件 | Mock 位置 |
 |------|------|------|---------|----------|
 | `GET` | `/withdrawal/balance` | 获取提现余额 | `Finance/index.tsx` | `mockWithdrawalBalance` |
 | `GET` | `/withdrawal/bank-accounts` | 银行账户列表 | `Finance/BankAccountModal.tsx` | `mockBankAccounts` |
 | `POST` | `/withdrawal/bank-accounts` | 添加银行账户 | `Finance/BankAccountModal.tsx` | 本地 state |
-| `DELETE` | `/withdrawal/bank-accounts/{id}` | 删除银行账户 | `Finance/BankAccountModal.tsx` | 本地 state |
-| `PATCH` | `/withdrawal/bank-accounts/{id}/default` | 设置默认账户 | `Finance/BankAccountModal.tsx` | 本地 state |
+| `DELETE` | `/withdrawal/bank-accounts/{accountId}` | 删除银行账户 | `Finance/BankAccountModal.tsx` | 本地 state |
+| `PATCH` | `/withdrawal/bank-accounts/{accountId}/default` | 设置默认账户 | `Finance/BankAccountModal.tsx` | 本地 state |
 | `POST` | `/withdrawal/requests` | 发起提现 | `Finance/WithdrawalModal.tsx` | 本地 state |
 | `GET` | `/withdrawal/requests` | 提现记录 | `Finance/index.tsx` | `mockWithdrawalRecords` |
-| `POST` | `/withdrawal/requests/{id}/cancel` | 取消提现 | 暂未实现 UI | — |
+| `POST` | `/withdrawal/requests/{requestId}/cancel` | 取消提现 | 暂未实现 UI | — |
 
 ### 3.6 通话记录模块（3 个接口）
 
@@ -148,7 +148,7 @@ npm run dev
 
 ### 主要实体 → 数据库表映射
 
-| TypeScript 接口 | 建议表名 | 关键字段 | 备注 |
+| TypeScript 接口 | 建议表名 | 关键字段（含建议的 DB 外键） | 备注 |
 |----------------|---------|---------|------|
 | `User` | `users` | `id`, `username`, `phone?`, `restaurantId` | 与 restaurant 为多对一关系 |
 | `Restaurant` | `restaurants` | `id`, `name`, `address`, `phone`, `deliveryMode`, `status` | 核心商户表 |
@@ -197,10 +197,11 @@ npm run dev
 
 - 使用 **bcrypt** 或 **Argon2** 对密码进行哈希存储，禁止明文存储
 - 密码最低要求：>= 8 位
-- 前端密码强度规则（参考 `src/utils/password.ts`）：
-  - weak: 长度 < 8 或满足 < 2 项条件
-  - medium: 满足 2-3 项条件（小写、大写、数字、特殊字符）
-  - strong: 满足 >= 4 项条件 或 长度 >= 12
+- 前端密码强度规则（参考 `src/utils/password.ts`），采用评分制：
+  - 5 项评分条件：含小写字母(+1)、含大写字母(+1)、含数字(+1)、含特殊字符(+1)、长度 >= 12(+1)
+  - weak: 长度 < 8（直接判定），或长度 >= 8 但得分 < 2
+  - medium: 得分 2-3
+  - strong: 得分 >= 4
 
 ### 5.3 OTP 生命周期
 
@@ -250,17 +251,17 @@ npm run dev
 | 序号 | 接口 | 说明 |
 |------|------|------|
 | 5 | `GET /restaurant` | 餐馆信息 — 登录后首页数据 |
-| 6 | `GET /orders` + `GET /orders/{id}` | 订单列表与详情 — 核心业务 |
-| 7 | `POST /orders/{id}/complete` + `POST /orders/{id}/cancel` | 订单操作 |
-| 8 | `GET /call-records` + `GET /call-records/{id}` | 通话记录 — 与订单关联 |
-| 9 | `GET /call-records/{id}/audio` | 录音播放 — 需对接存储服务 |
+| 6 | `GET /orders` + `GET /orders/{orderId}` | 订单列表与详情 — 核心业务 |
+| 7 | `POST /orders/{orderId}/complete` + `POST /orders/{orderId}/cancel` | 订单操作 |
+| 8 | `GET /call-records` + `GET /call-records/{callId}` | 通话记录 — 与订单关联 |
+| 9 | `GET /call-records/{callId}/audio` | 录音播放 — 需对接存储服务 |
 
 ### P2 — 财务与账户管理
 
 | 序号 | 接口 | 说明 |
 |------|------|------|
 | 10 | `GET /finance/stats` + `GET /finance/trends` + `GET /finance/payments` | 财务三件套 |
-| 11 | 提现相关全部 6 个接口 | 余额、银行账户 CRUD、提现申请 & 记录 |
+| 11 | 提现相关全部 8 个接口 | 余额、银行账户 CRUD、提现申请 & 记录、取消提现 |
 | 12 | `POST /auth/reset-password` + `POST /auth/change-password` | 可在最后实现，不影响核心流程 |
 
 ---
@@ -292,9 +293,9 @@ src/services/
 | `src/contexts/AuthContext.tsx` | `resetPassword()` 硬编码 | `POST /auth/reset-password` |
 | `src/contexts/AuthContext.tsx` | `changePassword()` 硬编码 | `POST /auth/change-password` |
 | `src/pages/Restaurant/index.tsx` | `mockRestaurant` | `GET /restaurant` |
-| `src/pages/Restaurant/DeliveryRangeMap.tsx` | `console.log` | `PATCH /restaurant/delivery-settings` |
-| `src/pages/Orders/index.tsx` | `mockOrders` + 本地 state | `GET /orders` + `POST /orders/{id}/complete` + `POST /orders/{id}/cancel` |
-| `src/pages/Orders/OrderDetailModal.tsx` | `mockOrders` | `GET /orders/{orderId}` |
+| `src/pages/Restaurant/DeliveryRangeMap.tsx` | 本地 state（未渲染） | `PATCH /restaurant/delivery-settings` |
+| `src/pages/Orders/index.tsx` | `mockOrders` + 本地 state | `GET /orders` + `POST /orders/{orderId}/complete` + `POST /orders/{orderId}/cancel` |
+| `src/pages/Orders/OrderDetailModal.tsx` | 来自父组件 prop (`mockOrders`) | `GET /orders/{orderId}` |
 | `src/pages/Finance/index.tsx` | `getFinanceStats()` | `GET /finance/stats` |
 | `src/pages/Finance/index.tsx` | `mockDailyStats` | `GET /finance/trends` |
 | `src/pages/Finance/index.tsx` | `mockPaymentRecords` | `GET /finance/payments` |
