@@ -18,6 +18,7 @@
 3. [订单管理接口](#3-订单管理接口)
 4. [财务接口](#4-财务接口)
 5. [提现接口](#5-提现接口)
+6. [通话记录接口](#6-通话记录接口)
 
 ---
 
@@ -29,7 +30,7 @@
 
 **当前 Mock 实现**:
 ```typescript
-// 硬编码验证: username === 'admin' && password === 'admin123'
+// 硬编码验证: username === 'demo' && password === 'demo123'
 ```
 
 **需要实现的接口**:
@@ -71,6 +72,227 @@ POST /auth/login
   }
 }
 ```
+
+---
+
+### 1.2 发送验证码
+
+**前端位置**: `src/contexts/AuthContext.tsx` - `sendVerificationCode()` 函数
+
+**当前 Mock 实现**:
+```typescript
+// 模拟 1s 延迟后返回 success
+await new Promise((resolve) => setTimeout(resolve, 1000));
+return true;
+```
+
+**需要实现的接口**:
+
+```
+POST /auth/send-verification-code
+```
+
+**请求体**:
+```json
+{
+  "phone": "string"
+}
+```
+
+**响应 - 成功 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "expiresIn": 60
+  }
+}
+```
+
+**响应 - 失败 (429 限频)**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "请等待 60 秒后再重新发送"
+  }
+}
+```
+
+**业务要点**:
+- 集成 SMS 服务（Twilio / AWS SNS）
+- 生成 6 位数字 OTP，存入 Redis，设 5 分钟过期
+- 限频：同号码 60 秒内不可重发
+- 前端在发送后启动 60 秒倒计时（`ForgotPassword/index.tsx` 中 `countdown` state）
+
+---
+
+### 1.3 手机号登录
+
+**前端位置**: `src/contexts/AuthContext.tsx` - `loginWithPhone()` 函数
+
+**当前 Mock 实现**:
+```typescript
+// 接受任意 10 位手机号 + 验证码 123456
+if (phone.length === 10 && code === '123456') { ... }
+```
+
+**需要实现的接口**:
+
+```
+POST /auth/login-with-phone
+```
+
+**请求体**:
+```json
+{
+  "phone": "string",
+  "code": "string"
+}
+```
+
+**响应 - 成功 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "user_001",
+      "username": "merchant",
+      "phone": "4155550123",
+      "restaurantId": "rest_001"
+    }
+  }
+}
+```
+
+**响应 - 失败 (401)**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CODE",
+    "message": "验证码无效或已过期"
+  }
+}
+```
+
+**业务要点**:
+- 校验 OTP 有效性（Redis 中存在且未过期）
+- 通过手机号查找关联商户账号
+- 验证通过后签发 JWT Token（同 1.1 格式）
+- OTP 一次性使用，验证后立即删除
+
+---
+
+### 1.4 忘记密码（重置）
+
+**前端位置**: `src/contexts/AuthContext.tsx` - `resetPassword()` 函数，UI 在 `src/pages/ForgotPassword/index.tsx`
+
+**当前 Mock 实现**:
+```typescript
+// 验证码 123456 通过即成功
+if (code === '123456') { return true; }
+```
+
+**需要实现的接口**:
+
+```
+POST /auth/reset-password
+```
+
+**请求体**:
+```json
+{
+  "phone": "string",
+  "code": "string",
+  "newPassword": "string"
+}
+```
+
+**响应 - 成功 (200)**:
+```json
+{
+  "success": true
+}
+```
+
+**响应 - 失败 (401)**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CODE",
+    "message": "验证码无效或已过期"
+  }
+}
+```
+
+**业务要点**:
+- 验证 OTP 有效性（同 1.3）
+- 使用 bcrypt/Argon2 哈希新密码后存储
+- 新密码长度 >= 8 位（前端已做校验，后端需二次验证）
+- 密码强度规则参考 `src/utils/password.ts`：小写、大写、数字、特殊字符、长度 >= 12
+- 重置成功后使该用户所有旧 session/token 失效
+- 前端 UI 是 4 步向导：输入手机号 → 输入验证码 → 设置新密码 → 成功
+
+---
+
+### 1.5 修改密码
+
+**前端位置**: `src/contexts/AuthContext.tsx` - `changePassword()` 函数，UI 在 `src/components/ChangePasswordModal.tsx`
+
+**当前 Mock 实现**:
+```typescript
+// 旧密码必须是 demo123
+if (oldPassword === 'demo123') { return true; }
+```
+
+**需要实现的接口**:
+
+```
+POST /auth/change-password
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**请求体**:
+```json
+{
+  "oldPassword": "string",
+  "newPassword": "string"
+}
+```
+
+**响应 - 成功 (200)**:
+```json
+{
+  "success": true
+}
+```
+
+**响应 - 失败 (400)**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "WRONG_PASSWORD",
+    "message": "旧密码错误"
+  }
+}
+```
+
+**业务要点**:
+- 需要 Bearer Token 认证（已登录状态）
+- 验证旧密码哈希是否匹配
+- 新密码长度 >= 8 位
+- 密码强度规则同 1.4
+- 成功后可选择是否使其他设备的 session 失效
 
 ---
 
@@ -881,6 +1103,180 @@ Authorization: Bearer {token}
 
 ---
 
+## 6. 通话记录接口
+
+### 6.1 获取通话记录列表
+
+**前端位置**: `src/pages/CallRecords/index.tsx`
+
+**当前 Mock 数据位置**: `src/mock/data.ts` - `mockCallRecords`
+
+```
+GET /call-records
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `page` | number | 否 | 页码，默认 1 |
+| `pageSize` | number | 否 | 每页数量，默认 10 |
+| `status` | string | 否 | 筛选状态: `completed` \| `missed` \| `in_progress` |
+| `search` | string | 否 | 搜索关键词（来电号码或通话 ID） |
+| `dateFilter` | string | 否 | 按日期筛选 (YYYY-MM-DD) |
+
+**请求示例**:
+```
+GET /call-records?page=1&pageSize=10&status=completed&dateFilter=2024-12-26
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "records": [
+      {
+        "id": "CALL-20241226-001",
+        "callerPhone": "(415) 555-1234",
+        "receiverPhone": "(415) 555-0123",
+        "startTime": "2024-12-26T10:25:00Z",
+        "endTime": "2024-12-26T10:30:00Z",
+        "duration": 300,
+        "status": "completed",
+        "orderId": "ORD-20241226-001",
+        "recordingUrl": "/audio/sample-call.mp3"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 10,
+      "total": 8,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `callerPhone` | string | 来电号码 |
+| `receiverPhone` | string | 接听号码（餐馆号码） |
+| `duration` | number | 通话时长（秒） |
+| `status` | enum | `completed` \| `missed` \| `in_progress` |
+| `orderId` | string? | 关联的订单 ID（通话产生了订单时存在） |
+| `recordingUrl` | string? | 通话录音 URL（missed 和部分通话可能无录音） |
+
+**注意**: 列表接口不返回 `transcript` 字段以减少数据量，需通过 6.2 详情接口获取。
+
+---
+
+### 6.2 获取通话详情
+
+**前端位置**: `src/pages/CallRecords/CallDetailModal.tsx`
+
+**当前 Mock 数据位置**: `src/mock/data.ts` - `mockCallRecords`（直接使用同一数组，含 transcript）
+
+```
+GET /call-records/{callId}
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应 (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "CALL-20241226-001",
+    "callerPhone": "(415) 555-1234",
+    "receiverPhone": "(415) 555-0123",
+    "startTime": "2024-12-26T10:25:00Z",
+    "endTime": "2024-12-26T10:30:00Z",
+    "duration": 300,
+    "status": "completed",
+    "orderId": "ORD-20241226-001",
+    "recordingUrl": "/audio/sample-call.mp3",
+    "transcript": [
+      {
+        "id": "m1",
+        "role": "ai",
+        "content": "您好，欢迎致电金龙中餐馆，我是AI助手小金，请问有什么可以帮您？",
+        "timestamp": "2024-12-26T10:25:05Z"
+      },
+      {
+        "id": "m2",
+        "role": "customer",
+        "content": "你好，我想点一个宫保鸡丁",
+        "timestamp": "2024-12-26T10:25:15Z"
+      }
+    ]
+  }
+}
+```
+
+**transcript 字段说明**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 消息唯一 ID |
+| `role` | enum | `customer` \| `ai` |
+| `content` | string | 对话内容文本 |
+| `timestamp` | string | 消息时间 (ISO 8601) |
+
+**注意**: `CallDetailModal.tsx` 中还会通过 `call.orderId` 查找关联订单并展示订单详情（左右分栏布局），后端无需额外接口，前端会复用 `GET /orders/{id}` 获取。
+
+---
+
+### 6.3 获取通话录音
+
+**前端位置**: `src/hooks/useAudioPlayer.ts` - 通过 `new Audio(recordingUrl)` 播放，`src/pages/CallRecords/AudioPlayer.tsx` 提供播放控件
+
+**当前 Mock 实现**: 使用本地静态文件 `/audio/sample-call.mp3`
+
+```
+GET /call-records/{callId}/audio
+```
+
+**请求头**:
+```
+Authorization: Bearer {token}
+```
+
+**响应**: 音频流
+
+**Content-Type**: `audio/mpeg` 或 `audio/wav`
+
+**业务要点**:
+- 录音文件存储在 S3 / 云存储
+- 方案 A（推荐）：返回预签名 URL（signed URL），前端通过 URL 直接播放，减少服务端带宽压力
+- 方案 B：服务端代理流式传输，需支持 HTTP Range 请求（`Accept-Ranges: bytes`），以支持播放器拖拽进度条
+- `useAudioPlayer.ts` 依赖 `loadedmetadata` 事件获取音频总时长，确保响应中包含 `Content-Length` 头
+- missed 状态的通话无录音，返回 404
+
+**如果使用预签名 URL 方案**:
+```json
+{
+  "success": true,
+  "data": {
+    "audioUrl": "https://s3.amazonaws.com/bucket/recordings/CALL-20241226-001.mp3?X-Amz-...",
+    "expiresIn": 3600
+  }
+}
+```
+
+---
+
 ## 错误响应格式
 
 所有接口在发生错误时返回统一格式：
@@ -922,14 +1318,19 @@ src/services/
 ├── restaurant.ts    # 餐馆信息 API
 ├── orders.ts        # 订单管理 API
 ├── finance.ts       # 财务相关 API
-└── withdrawal.ts    # 提现相关 API
+├── withdrawal.ts    # 提现相关 API
+└── callRecords.ts   # 通话记录 API
 ```
 
 ### 2. 需要替换的文件
 
 | 文件 | Mock 数据引用 | 替换为 |
 |------|--------------|--------|
-| `src/contexts/AuthContext.tsx` | 硬编码登录验证 | `POST /auth/login` |
+| `src/contexts/AuthContext.tsx` | 硬编码 `login()` | `POST /auth/login` |
+| `src/contexts/AuthContext.tsx` | 硬编码 `sendVerificationCode()` | `POST /auth/send-verification-code` |
+| `src/contexts/AuthContext.tsx` | 硬编码 `loginWithPhone()` | `POST /auth/login-with-phone` |
+| `src/contexts/AuthContext.tsx` | 硬编码 `resetPassword()` | `POST /auth/reset-password` |
+| `src/contexts/AuthContext.tsx` | 硬编码 `changePassword()` | `POST /auth/change-password` |
 | `src/pages/Restaurant/index.tsx` | `mockRestaurant` | `GET /restaurant` |
 | `src/pages/Restaurant/DeliveryRangeMap.tsx` | console.log | `PATCH /restaurant/delivery-settings` |
 | `src/pages/Orders/index.tsx` | `mockOrders` | `GET /orders` |
@@ -942,6 +1343,9 @@ src/services/
 | `src/pages/Finance/index.tsx` | `mockBankAccounts` | `GET /withdrawal/bank-accounts` |
 | `src/pages/Finance/WithdrawalModal.tsx` | 本地 state 操作 | `POST /withdrawal/requests` |
 | `src/pages/Finance/BankAccountModal.tsx` | 本地 state 操作 | `POST/DELETE/PATCH /withdrawal/bank-accounts` |
+| `src/pages/CallRecords/index.tsx` | `mockCallRecords` | `GET /call-records` |
+| `src/pages/CallRecords/CallDetailModal.tsx` | `mockCallRecords` + `mockOrders` | `GET /call-records/{callId}` + `GET /orders/{orderId}` |
+| `src/hooks/useAudioPlayer.ts` | 本地静态音频文件 | `GET /call-records/{callId}/audio` |
 
 ### 3. 环境变量配置
 
